@@ -360,25 +360,26 @@ class SudokuSolverFactory
         }
     }
 }
- 
+
 class SudokuGame
 {
     private SudokuSolverFactory solverFactory;
+    private int[,] board;
 
-    public SudokuGame()
+    public SudokuGame(int[,] initialDesk)
     {
         solverFactory = new SudokuSolverFactory();
+        board = initialDesk;
     }
 
     public void Play()
     {
-        
         string solverType = GetUserInput("Enter the solver type ('backtracking'): ");
-
         ISudokuSolver solver = solverFactory.CreateSolver(solverType);
-        int[,] board = InitializeBoard();
+
         Console.WriteLine("Start Board");
         PrintBoard(board);
+
         if (solver.Solve(board))
         {
             Console.WriteLine("Sudoku solved successfully!");
@@ -396,26 +397,9 @@ class SudokuGame
         return Console.ReadLine();
     }
 
-    private int[,] InitializeBoard()
-    {
-        int[,] array = new int[9, 9];
-        Random rnd = new Random();
-        // Board initialization code
-        for (int i = 0; i < 9; i++)
-        {
-            for (int j = 0; j < 9; j++)
-            {
-                
-                array[i, j] = rnd.Next() % 30 < 2 ? rnd.Next(1, 10) : 0;
-            }
-        }
-        return array; // Placeholder
-    }
-
     private void PrintBoard(int[,] board)
     {
-        // Board printing code
-        Console.WriteLine("Sudoku Board:"); // Placeholder
+        Console.WriteLine("Sudoku Board:");
         for (int i = 0; i < 9; i++)
         {
             for (int j = 0; j < 9; j++)
@@ -429,7 +413,19 @@ class Program
 {
     static void Main(string[] args)
     {
-        SudokuGame game = new SudokuGame();
+        int[,] initialDesk = new int[,]
+        {
+            {5, 3, 0, 0, 7, 0, 0, 0, 0},
+            {6, 0, 0, 1, 9, 5, 0, 0, 0},
+            {0, 9, 8, 0, 0, 0, 0, 6, 0},
+            {8, 0, 0, 0, 6, 0, 0, 0, 3},
+            {4, 0, 0, 8, 0, 3, 0, 0, 1},
+            {7, 0, 0, 0, 2, 0, 0, 0, 6},
+            {0, 6, 0, 0, 0, 0, 2, 8, 0},
+            {0, 0, 0, 4, 1, 9, 0, 0, 5},
+            {0, 0, 0, 0, 8, 0, 0, 7, 9}
+        };
+        SudokuGame game = new SudokuGame(initialDesk);
         game.Play();
     }
 }
