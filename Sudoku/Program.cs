@@ -101,7 +101,7 @@ class BacktrackingSolver : ISudokuSolver
 /// </summary>
 class DancingLinksSolver : ISudokuSolver
 {
-    // Internal representation of the Sudoku board as a 2D matrix of cells
+    // Internal representation of the Sudoku board as a 2D matrix of cell
     private class Cell
     {
         public int Row { get; set; }
