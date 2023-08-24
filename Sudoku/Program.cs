@@ -102,12 +102,17 @@ class BacktrackingSolver : ISudokuSolver
 class DancingLinksSolver : ISudokuSolver
 {
     // Internal representation of the Sudoku board as a 2D matrix of cells
-    private class Cell
+    private class Node
     {
         public int Row { get; set; }
         public int Col { get; set; }
         public int Block { get; set; }
         public int Value { get; set; }
+        public Node Left { get; set; }
+        public Node Right { get; set; }
+        public Node Up { get; set; }
+        public Node Down { get; set; }
+        public int Size { get; set; }
     }
 
     // Constraints for the Sudoku board
@@ -226,125 +231,152 @@ class DancingLinksSolver : ISudokuSolver
         current = head;
     }
 
-    // Solve the Sudoku puzzle using the dancing links algorithm
     private bool SolveSudoku()
     {
         if (head.Right == head)
         {
-            return true; // All constraints have been satisfied
+            return true; // Solution found
         }
 
-        Node column = ChooseColumn();
-        Cover(column);
+        // Choose the column with the fewest nodes
+        Node col = ChooseColumn();
 
-        for (Node rowNode = column.Down; rowNode != column; rowNode = rowNode.Down)
+        // Cover the chosen column
+        Cover(col);
+
+        // Iterate over the rows of the chosen column
+        for (Node row = col.Down; row != col; row = row.Down)
         {
-            current = rowNode;
+            // Add the row to the solution
+            AddToSolution(row);
 
-            for (Node node = rowNode.Right; node != rowNode; node = node.Right)
+            // Cover the columns of the chosen row
+            for (Node right = row.Right; right != row; right = right.Right)
             {
-                Cover(node.ColHeader);
+                Cover(right.ColHeader);
             }
 
+            // Recursively call SolveSudoku
             if (SolveSudoku())
             {
-                return true;
+                return true; // Solution found
             }
 
-            for (Node node = rowNode.Left; node != rowNode; node = node.Left)
+            // Remove the row from the solution
+            RemoveFromSolution(row);
+
+            // Uncover the columns of the chosen row
+            for (Node left = row.Left; left != row; left = left.Left)
             {
-                Uncover(node.ColHeader);
+                Uncover(left.ColHeader);
             }
-
-            current = rowNode; // restore the current node
         }
 
-        Uncover(column);
+        // Uncover the chosen column
+        Uncover(col);
 
-        return false;
+        return false; // No solution found
     }
 
-    // Choose the next column to cover based on the heuristic
     private Node ChooseColumn()
     {
-        Node column = null;
+        Node col = null;
         int minSize = int.MaxValue;
 
-        for (Node node = head.Right; node != head; node = node.Right)
+        // Iterate over the column headers
+        for (Node right = head.Right; right != head; right = right.Right)
         {
-            if (node.Size < minSize)
+            if (right.Size < minSize)
             {
-                minSize = node.Size;
-                column = node;
+                col = right;
+                minSize = right.Size;
             }
         }
 
-        return column;
+        return col;
     }
 
-    // Cover a column and exclude its rows and columns from further consideration
-    private void Cover(Node column)
+    private void Cover(Node col)
     {
-        column.Right.Left = column.Left;
-        column.Left.Right = column.Right;
+        // Unlink col from the header row
+        col.Left.Right = col.Right;
+        col.Right.Left = col.Left;
 
-        for (Node rowNode = column.Down; rowNode != column; rowNode = rowNode.Down)
+        // Iterate over the rows of col
+        for (Node row = col.Down; row != col; row = row.Down)
         {
-            for (Node node = rowNode.Right; node != rowNode; node = node.Right)
+            // Iterate over the cells of row
+            for (Node right = row.Right; right != row; right = right.Right)
             {
-                node.Up.Down = node.Down;
-                node.Down.Up = node.Up;
-                node.ColHeader.Size--;
+                // Unlink the cell from its column
+                right.Up.Down = right.Down;
+                right.Down.Up = right.Up;
+
+                // Decrement the size of the column
+                right.ColHeader.Size--;
             }
         }
     }
 
-    // Uncover a column and restore its rows and columns
-    private void Uncover(Node column)
+    private void Uncover(Node col)
     {
-        for (Node rowNode = column.Up; rowNode != column; rowNode = rowNode.Up)
+        // Iterate over the rows of col in reverse order
+        for (Node row = col.Up; row != col; row = row.Up)
         {
-            for (Node node = rowNode.Left; node != rowNode; node = node.Left)
+            // Iterate over the cells of row in reverse order
+            for (Node left = row.Left; left != row; left = left.Left)
             {
-                node.Up.Down = node;
-                node.Down.Up = node;
-                node.ColHeader.Size++;
+                // Increment the size of the column
+                left.ColHeader.Size++;
+
+                // Relink the cell to its column
+                left.Up.Down = left;
+                left.Down.Up = left;
             }
         }
 
-        column.Right.Left = column;
-        column.Left.Right = column;
+        // Relink col to the header row
+        col.Left.Right = col;
+        col.Right.Left = col;
     }
 
-    // Get the index of a column header node in the dancing links matrix
-    private int GetColHeaderIndex(int row, int col, int block, int value)
+    private void AddToSolution(Node row)
     {
-        return row * BoardSize + col + BoardSize * BoardSize * block + BoardSize * BoardSize * BlockSize + value - 1;
+        // Iterate over the cells of the row
+        for (Node right = row.Right; right != row; right = right.Right)
+        {
+            // Store the value of the cell as a solution to the Sudoku puzzle
+            current = current.Right = new Node
+            {
+                Row = right.Row,
+                Col = right.Col,
+                Block = right.Block,
+                Value = right.Value
+            };
+        }
     }
 
-    // Get the index of a cell node in the dancing links matrix
+    private void RemoveFromSolution(Node row)
+    {
+        // Remove the cells of the row from the solution
+        for (Node left = row.Left; left != row; left = left.Left)
+        {
+            current = left;
+        }
+
+        current.Right = head; // Set the current node as the head node
+    }
+
     private int GetIndex(int row, int col, int block, int value)
     {
-        return row * BoardSize + col * NumValues + block * NumValues * BlockSize + value - 1;
+        return (row * BoardSize * BoardSize) + (col * NumValues) + (value - 1);
     }
 
-    // Internal class representing a node in the dancing links matrix
-    private class Node
+    private int GetColHeaderIndex(int row, int col, int block, int value)
     {
-        public Node Left { get; set; }
-        public Node Right { get; set; }
-        public Node Up { get; set; }
-        public Node Down { get; set; }
-        public Node ColHeader { get { return this; } } // Column header node itself
-        public int Size { get; set; } // Number of nodes in the column
-        public int Row { get; set; }
-        public int Col { get; set; }
-        public int Block { get; set; }
-        public int Value { get; set; }
+        return row * BoardSize + col + block * BoardSize + value - 1;
     }
 }
-
-
 class SudokuSolverFactory
 {
     public ISudokuSolver CreateSolver(string solverType)
